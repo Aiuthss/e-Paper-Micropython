@@ -181,7 +181,24 @@ class EPD:
         self.send_command(0x50)
         self.send_data(0x37)
 
-    def display(self,image):
+    #def display(self,image):
+    #    self.send_command(0x61) #Set Resolution setting
+    #    self.send_data(0x02)
+    #    self.send_data(0x58)
+    #    self.send_data(0x01)
+    #    self.send_data(0xC0)
+    #    self.send_command(0x10)
+#
+    #    self.send_data(image)
+    #    self.send_command(0x04) #0x04
+    #    self.ReadBusyHigh()
+    #    self.send_command(0x12) #0x12
+    #    self.ReadBusyHigh()
+    #    self.send_command(0x02) #0x02
+    #    self.ReadBusyLow()
+    #    delay_ms(500)
+
+    def read_display(self, s, size):
         self.send_command(0x61) #Set Resolution setting
         self.send_data(0x02)
         self.send_data(0x58)
@@ -189,7 +206,7 @@ class EPD:
         self.send_data(0xC0)
         self.send_command(0x10)
 
-        self.send_data(image)
+        self.read_send_data(s, size)
         self.send_command(0x04) #0x04
         self.ReadBusyHigh()
         self.send_command(0x12) #0x12

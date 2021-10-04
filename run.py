@@ -45,7 +45,7 @@ class Http:
     
     def display(self, epd):
         try:
-            epd.read_send_data(self.s, 30000)
+            epd.read_display(self.s, 30000)
         except OSError:
             self.s.close()
             raise
