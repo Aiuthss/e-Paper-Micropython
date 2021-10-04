@@ -29,7 +29,39 @@
 # THE SOFTWARE.
 #
 
-from . import epdconfig
+import gc
+import time
+import machine
+
+DC_PIN          = 15
+CS_PIN          = 27
+RST_PIN         = 26
+BUSY_PIN        = 25
+
+hsp = machine.SPI(1, 10000000)
+
+def digital_write(pin, value):
+    p0 = machine.Pin(pin, machine.Pin.OUT)
+    p0.value(value)
+
+def digital_read(pin):
+    p0 = machine.Pin(pin, machine.Pin.IN)
+    return p0.value()
+
+def delay_ms(delaytime):
+    time.sleep(delaytime / 1000.0)
+
+def spi_writebyte(data):
+    hspi.write(bytes(data))
+
+def module_exit(self):
+    print("spi end")
+    hspi.deinit()
+    print("close 5V, Module enters 0 power consumption ...")
+    p0 = machine.Pin(RST_PIN, machine.Pin.OUT)
+    p1 = machine.Pin(DC_PIN, machine.Pin.OUT)
+    p0.value(0)
+    p1.value(0)
 
 # Display resolution
 EPD_WIDTH       = 600
@@ -37,10 +69,10 @@ EPD_HEIGHT      = 448
 
 class EPD:
     def __init__(self):
-        self.reset_pin = epdconfig.RST_PIN
-        self.dc_pin = epdconfig.DC_PIN
-        self.busy_pin = epdconfig.BUSY_PIN
-        self.cs_pin = epdconfig.CS_PIN
+        self.reset_pin = RST_PIN
+        self.dc_pin = DC_PIN
+        self.busy_pin = BUSY_PIN
+        self.cs_pin = CS_PIN
         self.width = EPD_WIDTH
         self.height = EPD_HEIGHT
         self.BLACK  = 0x000000   #   0000  BGR
@@ -54,35 +86,60 @@ class EPD:
 
     # Hardware reset
     def reset(self):
-        epdconfig.digital_write(self.reset_pin, 1)
-        epdconfig.delay_ms(600)
-        epdconfig.digital_write(self.reset_pin, 0)
-        epdconfig.delay_ms(2)
-        epdconfig.digital_write(self.reset_pin, 1)
-        epdconfig.delay_ms(200)
+        digital_write(self.reset_pin, 1)
+        delay_ms(600)
+        digital_write(self.reset_pin, 0)
+        delay_ms(2)
+        digital_write(self.reset_pin, 1)
+        delay_ms(200)
 
     def send_command(self, command):
-        epdconfig.digital_write(self.dc_pin, 0)
-        epdconfig.digital_write(self.cs_pin, 0)
-        epdconfig.spi_writebyte(command)
-        epdconfig.digital_write(self.cs_pin, 1)
+        digital_write(self.dc_pin, 0)
+        digital_write(self.cs_pin, 0)
+        spi_writebyte(command)
+        digital_write(self.cs_pin, 1)
 
     def send_data(self, data):
-        epdconfig.digital_write(self.dc_pin, 1)
-        epdconfig.digital_write(self.cs_pin, 0)
-        epdconfig.spi_writebyte(data)
-        epdconfig.digital_write(self.cs_pin, 1)
+        digital_write(self.dc_pin, 1)
+        digital_write(self.cs_pin, 0)
+        spi_writebyte(data)
+        digital_write(self.cs_pin, 1)
+
+
+    def read_send_data(self, s, size):
+        digital_write(self.dc_pin, 1)
+        digital_write(self.cs_pin, 0)
+        while True:
+            gc.collect()
+            letters = self.s.read(size)
+            if letters and letters != b'':
+                spi_writebyte(letters)
+            else:
+                print('close')
+                s.close()
+                break
+        digital_write(self.cs_pin, 1)
+
+    #def send_files(self, files):
+    #    digital_write(self.dc_pin, 1)
+    #    digital_write(self.cs_pin, 0)
+    #    for file in files:
+    #        f = open(file, 'rb')
+    #        data = f.read()
+    #        spi_writebyte(data)
+    #    spi_writebyte(data)
+    #    digital_write(self.cs_pin, 1)        
 
     def ReadBusyHigh(self):
         print("e-Paper busy")
-        while(epdconfig.digital_read(self.busy_pin) == 0):      # 0: idle, 1: busy
-            epdconfig.delay_ms(100)
+        while(digital_read(self.busy_pin) == 0):      # 0: idle, 1: busy
+            delay_ms(100)
         print("e-Paper busy release")
 
     def ReadBusyLow(self):
         print("e-Paper busy")
-        while(epdconfig.digital_read(self.busy_pin) == 1):      # 0: idle, 1: busy
-            epdconfig.delay_ms(100)
+        while(digital_read(self.busy_pin) == 1):      # 0: idle, 1: busy
+            delay_ms(100)
         print("e-Paper busy release")
 
     def init(self):
@@ -120,7 +177,7 @@ class EPD:
         self.send_command(0xE3)
         self.send_data(0xAA)
 
-        epdconfig.delay_ms(100)
+        delay_ms(100)
         self.send_command(0x50)
         self.send_data(0x37)
 
@@ -139,7 +196,7 @@ class EPD:
         self.ReadBusyHigh()
         self.send_command(0x02) #0x02
         self.ReadBusyLow()
-        epdconfig.delay_ms(500)
+        delay_ms(500)
 
     def Clear(self):
         self.send_command(0x61) #Set Resolution setting
@@ -159,13 +216,13 @@ class EPD:
         self.ReadBusyHigh()
         self.send_command(0x02) #0x02
         self.ReadBusyLow()
-        epdconfig.delay_ms(500)
+        delay_ms(500)
 
     def sleep(self):
-        epdconfig.delay_ms(500)
+        delay_ms(500)
         self.send_command(0x07) # DEEP_SLEEP
         self.send_data(0XA5)
-        epdconfig.digital_write(self.reset_pin, 0)
+        digital_write(self.reset_pin, 0)
 
-        epdconfig.delay_ms(2000)
-        epdconfig.module_exit()
+        delay_ms(2000)
+        module_exit()
