@@ -33,12 +33,24 @@ import gc
 import time
 import machine
 
-DC_PIN          = 15
-CS_PIN          = 27
+CS_PIN          = 15
+DC_PIN          = 27
 RST_PIN         = 26
 BUSY_PIN        = 25
 
-hsp = machine.SPI(1, 10000000)
+hspi = machine.SPI(1, 10000000, sck=machine.Pin(14), mosi=machine.Pin(13), miso=machine.Pin(12))
+
+def to_byte(data):
+    if type(data) is list:
+        x = bytearray(len(data))
+        for i, content in enumerate(data):
+            x[i] = content
+    elif type(data) is bytes:
+        x = data
+    else:
+        x = bytearray(1)
+        x[0] = data
+    return x
 
 def digital_write(pin, value):
     p0 = machine.Pin(pin, machine.Pin.OUT)
@@ -52,7 +64,7 @@ def delay_ms(delaytime):
     time.sleep(delaytime / 1000.0)
 
 def spi_writebyte(data):
-    hspi.write(bytes(data))
+    hspi.write(to_byte(data))
 
 def module_exit(self):
     print("spi end")
@@ -106,17 +118,17 @@ class EPD:
         digital_write(self.cs_pin, 1)
 
 
-    def read_send_data(self, s, size):
+    def read_send_data(self, http, size):
         digital_write(self.dc_pin, 1)
         digital_write(self.cs_pin, 0)
         while True:
             gc.collect()
-            letters = self.s.read(size)
+            letters = http.s.read(size)
             if letters and letters != b'':
                 spi_writebyte(letters)
             else:
                 print('close')
-                s.close()
+                http.s.close()
                 break
         digital_write(self.cs_pin, 1)
 
@@ -145,7 +157,7 @@ class EPD:
     def init(self):
         # EPD hardware init start
         self.reset()
-
+        print("reset")
         self.ReadBusyHigh()
         self.send_command(0x00)
         self.send_data(0xEF)
@@ -180,6 +192,7 @@ class EPD:
         delay_ms(100)
         self.send_command(0x50)
         self.send_data(0x37)
+        print("init fin")
 
     #def display(self,image):
     #    self.send_command(0x61) #Set Resolution setting
@@ -198,7 +211,7 @@ class EPD:
     #    self.ReadBusyLow()
     #    delay_ms(500)
 
-    def read_display(self, s, size):
+    def read_display(self, http, size):
         self.send_command(0x61) #Set Resolution setting
         self.send_data(0x02)
         self.send_data(0x58)
@@ -206,7 +219,10 @@ class EPD:
         self.send_data(0xC0)
         self.send_command(0x10)
 
-        self.read_send_data(s, size)
+        self.read_send_data(http, size)
+        #データを送り終えたらネットワークインタフェースを無効化
+        http.wlan.active(False)
+        print('network interface inactivated')
         self.send_command(0x04) #0x04
         self.ReadBusyHigh()
         self.send_command(0x12) #0x12
@@ -224,8 +240,9 @@ class EPD:
         self.send_command(0x10)
 
         # Set all pixels to white
-        buf = bytes([0x11] * int(self.width * self.height / 2))
-        self.send_data(buf)
+        for i in range(0, self.height):
+            buf = bytes([0x11] * int(self.width / 2))
+            self.send_data(buf)
 
         self.send_command(0x04) #0x04
         self.ReadBusyHigh()

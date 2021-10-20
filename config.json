@@ -1,0 +1,20 @@
+{
+    "general": {
+        "background": "victorique.png",
+        "bg_fmt": "full",
+        "bg_color": "white"
+    },
+    "weather": {
+        "office": "\u5948\u826f\u770c",
+        "office_code": "290000",
+        "area": "\u5317\u90e8",
+        "area_code": "290010",
+        "alpha": 120
+    },
+    "calendar": {
+        "calendarIds": [
+            "atsush.har@gmail.com"
+        ],
+        "alpha": 120
+    }
+}
