@@ -24,7 +24,6 @@ def connect_best_lan():
             pwd = i['password']
             max_rssi = rssi
     if len(best_SSID) != 0:
-        wlan.active(True)
         wlan.connect(best_SSID, pwd)
         while not wlan.isconnected():
             pass
