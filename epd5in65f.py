@@ -118,17 +118,17 @@ class EPD:
         digital_write(self.cs_pin, 1)
 
 
-    def read_send_data(self, http, size):
+    def read_send_data(self, s, size):
         digital_write(self.dc_pin, 1)
         digital_write(self.cs_pin, 0)
         while True:
             gc.collect()
-            letters = http.s.read(size)
+            letters = s.read(size)
             if letters and letters != b'':
                 spi_writebyte(letters)
             else:
                 print('close')
-                http.s.close()
+                s.close()
                 break
         digital_write(self.cs_pin, 1)
 
@@ -219,7 +219,7 @@ class EPD:
         self.send_data(0xC0)
         self.send_command(0x10)
 
-        self.read_send_data(http, size)
+        self.read_send_data(http.s, size)
         #データを送り終えたらネットワークインタフェースを無効化
         http.wlan.active(False)
         print('network interface inactivated')
